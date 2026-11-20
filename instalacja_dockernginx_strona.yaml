@@ -1,0 +1,69 @@
+endency_packages }}"
+        state: present
+        update_cache: yes
+      when: (ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu') and (result.rc != 0)
+
+    - name: Dodaj klucz GPG Docker (Debian/Ubuntu)
+      get_url:
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+      when: (ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu') and (result.rc != 0)
+
+    - name: Dodaj repozytorium Docker (Debian/Ubuntu)
+      apt_repository:
+        repo: >-
+          deb [arch=amd64 signed-by={{ keyring_path }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_lsb.codename }} stable
+        state: present
+        filename: docker
+      when: (ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu') and (result.rc != 0)
+
+    - name: Instalacja Dockera i Docker Compose plugin
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+        update_cache: yes
+      when: (ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu') and (result.rc != 0)
+
+    - name: (Opcjonalnie) Tworzenie dowiązania symbolicznego dla kompatybilności 'docker-compose'
+      file:
+        src: /usr/libexec/docker/cli-plugins/docker-compose
+        dest: /usr/local/bin/docker-compose
+        state: link
+      when: ansible_distribution in ["Ubuntu", "Debian"]
+
+    - name: Sprawdzenie wersji Docker Compose
+      command: docker --version
+      register: docker_ver
+      changed_when: false
+
+    - name: Sprawdzenie wersji Docker Compose
+      command: docker compose version
+      register: compose_ver
+      changed_when: false
+
+    - name: Wyświetl wersję Docker
+      debug:
+        msg: "Docker version: {{ docker_ver.stdout }}"
+
+    - name: Wyswietl wersję Docker Compose
+      debug:
+        msg: "Docker Compose version: {{ compose_ver.stdout }}"
+
+    - name: Instalacja kontenera NGINX
+      docker_container:
+        name: www-example
+        image: nginx
+        state: started
+        recreate: true
+        restart_policy: unless-stopped
+        ports:
+        - '80:80'
+        volumes:
+        - "/home/kursant/www-example:/usr/share/nginx/html"
+
+    - name: Kopiowanie katalogu z witryną www
+      copy:
+        src: strona/
+        dest: /home/kursant/www-example/
+        force: yes
