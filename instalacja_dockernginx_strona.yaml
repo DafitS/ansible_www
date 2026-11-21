@@ -1,4 +1,32 @@
-endency_packages }}"
+---
+- name: Instalacja Docker, i strony na Nginx
+  hosts: docker.adminakademia.lan
+  become: yes
+
+  vars:
+    dependency_packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    keyring_path: /etc/apt/keyrings/docker.asc
+
+  tasks:
+    - name: DOCKER - Sprawdź, czy docker jest zainstalowany.
+      command: docker
+      register: result
+      ignore_errors: yes
+
+    - name: UBUNTU and DEBIAN DOCKER - Zainstaluj zależności pakietów dla dystrybucji Debian (jeżeli wcześniej się okazało, że Docker nie jest zainstalowany)
+      apt:
+        name: "{{ dependency_packages }}"
         state: present
         update_cache: yes
       when: (ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu') and (result.rc != 0)
